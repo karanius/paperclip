@@ -152,6 +152,7 @@ describe("execute", () => {
     const result = await execute(makeCtx({
       apiBaseUrl: "http://127.0.0.1:8642",
       apiKey: "secret-key",
+      paperclipApiUrl: "http://paperclip.local",
       timeoutSec: 5,
     }));
 
@@ -172,6 +173,13 @@ describe("execute", () => {
     const body = JSON.parse(String(init.body));
     expect(body.input).toContain("Do the thing");
     expect(body.session_id).toBe("paperclip:company:company-1:agent:agent-1:issue:issue-1");
+    expect(body.runtime_environment).toEqual({
+      PAPERCLIP_AGENT_ID: "agent-1",
+      PAPERCLIP_API_URL: "http://paperclip.local/api",
+      PAPERCLIP_COMPANY_ID: "company-1",
+      PAPERCLIP_RUN_ID: "pc-run-1",
+      PAPERCLIP_TASK_ID: "issue-1",
+    });
   });
 
   it.each([false, true])("preserves chat handoff policy on gateway turns (resumed=%s)", async (resumed) => {

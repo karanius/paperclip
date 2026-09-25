@@ -320,8 +320,24 @@ function buildInput(ctx: AdapterExecutionContext, paperclipApiUrl: string | null
   return lines.filter((line) => line !== null && line !== undefined).join("\n").trim();
 }
 
+function normalizePaperclipApiUrl(raw: unknown): string | null {
+  const value = nonEmpty(raw)?.replace(/\/+$/, "");
+  if (!value) return null;
+  return value.endsWith("/api") ? value : `${value}/api`;
+}
+
 function buildRunBody(ctx: AdapterExecutionContext, sessionKey: string | null): Record<string, unknown> {
-  const paperclipApiUrl = nonEmpty(ctx.config.paperclipApiUrl);
+  const paperclipApiUrl = normalizePaperclipApiUrl(ctx.config.paperclipApiUrl);
+  const paperclipTaskId = nonEmpty(ctx.context.taskId) ?? nonEmpty(ctx.context.issueId);
+  const runtimeEnvironment = Object.fromEntries(
+    Object.entries({
+      PAPERCLIP_API_URL: paperclipApiUrl,
+      PAPERCLIP_RUN_ID: nonEmpty(ctx.runId),
+      PAPERCLIP_TASK_ID: paperclipTaskId,
+      PAPERCLIP_AGENT_ID: nonEmpty(ctx.agent.id),
+      PAPERCLIP_COMPANY_ID: nonEmpty(ctx.agent.companyId),
+    }).filter((entry): entry is [string, string] => Boolean(entry[1])),
+  );
   const payloadTemplate = parseObject(ctx.config.payloadTemplate);
   const configuredInput = nonEmpty(payloadTemplate.input);
   const input = configuredInput && ctx.context.conversationMode === true
@@ -336,6 +352,7 @@ function buildRunBody(ctx: AdapterExecutionContext, sessionKey: string | null): 
     input,
     instructions,
     ...(sessionKey ? { session_id: sessionKey } : {}),
+    runtime_environment: runtimeEnvironment,
   };
 }
 
